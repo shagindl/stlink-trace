@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\stlink-trace.c">
+    <ClCompile Include="..\stlink-trace.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
@@ -28,6 +28,8 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="packages\libusb.1.0.21\lib\native\x86\libusb-1.0.dll" />
+    <CopyFileToFolders Include="packages\libusb.1.0.21\lib\native\x86\libusb-1.0.dll">
+      <Filter>Файлы ресурсов</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

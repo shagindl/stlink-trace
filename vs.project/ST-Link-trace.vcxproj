@@ -142,7 +142,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\stlink-trace.c" />
+    <ClCompile Include="..\stlink-trace.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\stlink-trace.h" />

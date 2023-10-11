@@ -81,8 +81,8 @@ int debugEnabled = 0;
 int main(int argc, char** argv)
 {
      int ret, pos, opt = 0;
-     char* filename = "trace.txt";
-     char* fullTraceFilename = "trace-full.txt";
+     const char* filename = "trace.txt";
+     const char* fullTraceFilename = "trace-full.txt";
 
      while ((opt = getopt(argc, argv, "f:t:d")) != -1) {
     	 switch (opt) {
