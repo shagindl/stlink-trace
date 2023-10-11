@@ -72,7 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(ProjectDir)packages\libusb.1.0.21\src\include\;$(ProjectDir)..\Getopt-for-VS\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)packages\libusb.1.0.21\src\include\;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)packages\libusb.1.0.21\lib\native\x86\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
