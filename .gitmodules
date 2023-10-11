@@ -1,0 +1,3 @@
+[submodule "Getopt-for-VS"]
+	path = Getopt-for-VS
+	url = https://github.com/skandhurkat/Getopt-for-Visual-Studio.git

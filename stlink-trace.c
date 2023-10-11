@@ -1,4 +1,4 @@
-/*
+﻿/*
   * stlink-trace.c
   *
   *  Created on: 21/02/2013
@@ -12,24 +12,30 @@
   * See: http://www.st.com/web/en/catalog/tools/PF258168
   */
 
+#pragma comment( lib, "libusb-1.0.lib" )
+
 #define HEXDUMP 0
 #define ASYNC	0
 
+  // for the STM32L152, system clock is 24MHz
+  // (CLK/SWO_CLK) - 1 = (24MHz/2MHz) - 1 = 11 = 0x0B
+#define CLOCK_DIVISOR 0x0000000B
 // for the STM32F107Z, system clock is 72MHz
 // (CLK/SWO_CLK) - 1 = (72MHz/2MHz) - 1 = 35 = 0x23
-#define CLOCK_DIVISOR 0x00000023
+//#define CLOCK_DIVISOR 0x00000023
 // for the STM32F207Z, system clock is 120MHz
 // (CLK/SWO_CLK) - 1 = (120MHz/2MHz) - 1 = 59 = 0x3B
 //#define CLOCK_DIVISOR 0x0000003B
 
+
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include "ncurses.h"
+#include <io.h>
 #include "stlink-trace.h"
 #include "stdio.h"
 #include "libusb-1.0/libusb.h"
-#include <getopt.h>
+#include "getopt.h"
 
 libusb_context* ctx = 0;
 libusb_device_handle* stlinkhandle = 0;
@@ -39,6 +45,7 @@ ssize_t listSize = 0;
 struct libusb_transfer* responseTransfer = 0;
 struct libusb_transfer* requestTransfer = 0;
 
+void usleep(unsigned int usec);
 void Cleanup();
 int IsStlink(libusb_device* dev);
 void GetCoreId();
@@ -52,7 +59,7 @@ void EnterDebugState();
 int ReadTraceData(int toscreen, int byteCount);
 void RunCore();
 void StepCore();
-void GetVersion();
+void _GetVersion();
 int GetCurrentMode();
 void GetTargetVoltage();
 int SendAndReceive(unsigned char* txBuffer, size_t txSize, unsigned char* rxBuffer, size_t rxSize);
@@ -173,7 +180,7 @@ int main(int argc, char** argv)
      //============================
 
      GetCurrentMode();
-     GetVersion();
+     _GetVersion();
 
      //libusb_clear_halt(stlinkhandle, 0x81);
 
@@ -555,7 +562,7 @@ void GetTargetVoltage()
     }
 }
 
-void GetVersion()
+void _GetVersion()
 {
      size_t txSize = 16;
      unsigned char rxBuffer[100];
@@ -906,3 +913,19 @@ int submit_wait(struct libusb_transfer* trans)
      return 0;
 }
 #endif
+
+#include <windows.h>
+#include <assert.h>
+
+void usleep(unsigned int usec) {
+    HANDLE timer;
+    LARGE_INTEGER ft;
+
+    ft.QuadPart = -(10 * (__int64)usec);
+
+    //Timer Funktionen ab WINNT verfügbar
+    assert( (timer = CreateWaitableTimer(NULL, TRUE, NULL)) );
+    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
+    WaitForSingleObject(timer, INFINITE);
+    CloseHandle(timer);
+}
