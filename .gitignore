@@ -1,0 +1,5 @@
+/vs.project/.vs/**
+/vs.project/Debug/**
+/vs.project/*.user
+/vs.project/packages/**
+/vs.project/*.txt
