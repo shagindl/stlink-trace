@@ -3,3 +3,4 @@
 /vs.project/*.user
 /vs.project/packages/**
 /vs.project/*.txt
+/vs.project/x64/**

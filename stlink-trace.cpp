@@ -28,55 +28,11 @@
 //#define CLOCK_DIVISOR 0x0000003B
 
 
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <io.h>
 #include "stlink-trace.h"
-#include "stdio.h"
-#include "libusb-1.0/libusb.h"
 #include "getopt.h"
 
-libusb_context* ctx = 0;
-libusb_device_handle* stlinkhandle = 0;
-libusb_device* stlinkdev = 0;
-libusb_device** deviceList = 0;
-ssize_t listSize = 0;
-struct libusb_transfer* responseTransfer = 0;
-struct libusb_transfer* requestTransfer = 0;
+#if 0
 
-void usleep(unsigned int usec);
-void Cleanup();
-int IsStlink(libusb_device* dev);
-void GetCoreId();
-void EnterSWD();
-int submit_wait(struct libusb_transfer* trans);
-ssize_t TransferData(int terminate,
-         unsigned char* transmitBuffer, size_t transmitLength,
-         unsigned char* receiveBuffer, size_t receiveLength);
-int FetchTraceByteCount();
-void EnterDebugState();
-int ReadTraceData(int toscreen, int byteCount);
-void RunCore();
-void StepCore();
-void _GetVersion();
-int GetCurrentMode();
-void GetTargetVoltage();
-int SendAndReceive(unsigned char* txBuffer, size_t txSize, unsigned char* rxBuffer, size_t rxSize);
-void Write32Bit(uint32_t address, uint32_t value);
-uint32_t Read32Bit(uint32_t address);
-void ExitDFUMode();
-void HaltRunningSystem();
-void ForceDebug();
-void ResetCore();
-void LocalReset();
-void EnableTrace();
-void UnknownCommand();
-uint32_t ReadDHCSRValue();
-
-FILE* resultsFile = NULL;
-FILE* fullResultsFile = NULL;
-int debugEnabled = 0;
 
 int main(int argc, char** argv)
 {
@@ -266,14 +222,16 @@ int main(int argc, char** argv)
      return 0;
 }
 
-void Cleanup()
+#endif 
+
+void stlink_t::Cleanup()
 {
      if (stlinkhandle != 0) libusb_close(stlinkhandle);
      if (ctx != 0) libusb_exit(ctx);
      if (deviceList != 0) libusb_free_device_list(deviceList, 1);
 }
 
-int IsStlink(libusb_device* dev)
+int stlink_t::IsStlink(libusb_device* dev)
 {
      struct libusb_device_descriptor desc;
 
@@ -320,7 +278,7 @@ epdesc->bDescriptorType);
      return 1;
 }
 
-void Write32Bit(uint32_t address, uint32_t value)
+void stlink_t::Write32Bit(uint32_t address, uint32_t value)
 {
 	unsigned char txBuffer[] = {STLINK_DEBUG_COMMAND, WRITE32, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
@@ -344,7 +302,7 @@ void Write32Bit(uint32_t address, uint32_t value)
 	UnknownCommand();
 }
 
-uint32_t Read32Bit(uint32_t address)
+uint32_t stlink_t::Read32Bit(uint32_t address)
 {
 	unsigned char txBuffer[] = {STLINK_DEBUG_COMMAND, READ32, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 	unsigned char rxBuffer[100];
@@ -364,7 +322,7 @@ uint32_t Read32Bit(uint32_t address)
 	return value;
 }
 
-void UnknownCommand()
+void stlink_t::UnknownCommand()
 {
 	unsigned char rxBuffer[100];
 
@@ -373,7 +331,7 @@ void UnknownCommand()
 	SendAndReceive(&txEndBuffer[0], 16, &rxBuffer[0], 64);
 }
 
-uint32_t ReadDHCSRValue()
+uint32_t stlink_t::ReadDHCSRValue()
 {
 	return Read32Bit(0xE000EDF0);
 }
@@ -381,12 +339,12 @@ uint32_t ReadDHCSRValue()
 /*
  * Enable the ITM trace functionality
  */
-void EnableTrace()
+void stlink_t::EnableTrace(bool fNeedReset)
 {
 	// set up the ITM
 	EnterDebugState();
 	HaltRunningSystem();
-	LocalReset();
+	if(fNeedReset) LocalReset();
 
 	// Set DHCSR to C_HALT and C_DEBUGEN
 	Write32Bit(0xE000EDF0, 0xA05F0003);
@@ -462,7 +420,7 @@ void EnableTrace()
 /*
  * Resets the target board by setting a bit in the AIRCR
  */
-void LocalReset()
+void stlink_t::LocalReset()
 {
 	//F2 35 0C ED 00 E0 04 00 FA 05
 	unsigned char txBuffer[] = {STLINK_DEBUG_COMMAND, WRITE_DATA, 0x0C, 0xED, 0x00, 0xE0, 0x04, 0x00, 0xFA, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -484,7 +442,7 @@ void LocalReset()
 	printf("Local reset complete\n");
 }
 
-void ExitDFUMode()
+void stlink_t::ExitDFUMode()
 {
     size_t txSize = 16;
     unsigned char txBuffer[] = {STLINK_DFU_COMMAND, STLINK_DFU_EXIT, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -494,7 +452,7 @@ void ExitDFUMode()
     printf("Exited DFU mode\n");
 }
 
-int GetCurrentMode()
+int stlink_t::GetCurrentMode()
 {
     unsigned char rxBuffer[100];
     size_t rxSize = 2;
@@ -502,7 +460,7 @@ int GetCurrentMode()
     unsigned char txBuffer[] = {0xF5, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     size_t txSize = 16;
 
-    bytesRead = TransferData(0, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
+    bytesRead = (int)TransferData(0, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
     if (bytesRead > 0) {
         printf("Mode: 0x%02x 0x%02x\n",
        		 rxBuffer[0], rxBuffer[1]);
@@ -515,40 +473,40 @@ int GetCurrentMode()
     return 0;
 }
 
-int SendAndReceive(unsigned char* txBuffer, size_t txSize, unsigned char* rxBuffer, size_t rxSize)
+int stlink_t::SendAndReceive(unsigned char* txBuffer, size_t txSize, unsigned char* rxBuffer, size_t rxSize)
 {
-    return TransferData(0, txBuffer, txSize, rxBuffer, rxSize);
+    return (int)TransferData(0, txBuffer, txSize, rxBuffer, rxSize);
 }
 
-void EnterDebugState()
+void stlink_t::EnterDebugState()
 {
 	unsigned char txBuffer[] = {STLINK_DEBUG_COMMAND, 0x35, 0xF0, 0xED, 0x00, 0xE0, 0x03, 0x00, 0x5F, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 	unsigned char rxBuffer[100];
 	SendAndReceive(&txBuffer[0], 16, &rxBuffer[0], 64);
 }
 
-void ResetCore()
+void stlink_t::ResetCore()
 {
 	unsigned char txBuffer[] = {STLINK_DEBUG_COMMAND, STLINK_DEBUG_RESETSYS, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 	unsigned char rxBuffer[100];
 	SendAndReceive(&txBuffer[0], 16, &rxBuffer[0], 2);
 }
 
-void ForceDebug()
+void stlink_t::ForceDebug()
 {
 	unsigned char txBuffer[] = {STLINK_DEBUG_COMMAND, STLINK_DEBUG_FORCEDEBUG, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 	unsigned char rxBuffer[100];
 	SendAndReceive(&txBuffer[0], 16, &rxBuffer[0], 2);
 }
 
-void HaltRunningSystem()
+void stlink_t::HaltRunningSystem()
 {
 	unsigned char txBuffer[] = {STLINK_DEBUG_COMMAND, 0x35, 0xFC, 0xED, 0x00, 0xE0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 	unsigned char rxBuffer[100];
 	SendAndReceive(&txBuffer[0], 16, &rxBuffer[0], 64);
 }
 
-void GetTargetVoltage()
+void stlink_t::GetTargetVoltage()
 {
 	unsigned char txBuffer[] = {0xF7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 	unsigned char rxBuffer[100];
@@ -562,7 +520,7 @@ void GetTargetVoltage()
     }
 }
 
-void _GetVersion()
+void stlink_t::_GetVersion()
 {
      size_t txSize = 16;
      unsigned char rxBuffer[100];
@@ -570,7 +528,7 @@ void _GetVersion()
      int bytesRead = 0;
      unsigned char txBuffer[] = {0xF1, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-     bytesRead = TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
+     bytesRead = (int)TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
      if (bytesRead > 0) {
          printf("Version: 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x\n",
         		 rxBuffer[0], rxBuffer[1], rxBuffer[2], rxBuffer[3], rxBuffer[4], rxBuffer[5]);
@@ -580,7 +538,7 @@ void _GetVersion()
      }
 }
 
-void GetCoreId()
+void stlink_t::GetCoreId()
 {
      size_t txSize = 16;
      unsigned char rxBuffer[100];
@@ -588,7 +546,7 @@ void GetCoreId()
      int bytesRead = 0;
      unsigned char txBuffer[] = {DEBUG_COMMAND, 0x22, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-     bytesRead = TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
+     bytesRead = (int)TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
      if (bytesRead > 0) {
          uint32_t coreid = (rxBuffer[3] << 24) | (rxBuffer[2] << 16) | (rxBuffer[1] << 8) | (rxBuffer[0] << 0);
          printf("Core ID: 0x%08x\n", coreid);
@@ -599,7 +557,7 @@ void GetCoreId()
      }
 }
 
-void EnterSWD()
+void stlink_t::EnterSWD()
 {
      size_t txSize = 16;
      unsigned char rxBuffer[100];
@@ -607,7 +565,7 @@ void EnterSWD()
      int bytesRead = 0;
      unsigned char txBuffer[] = {DEBUG_COMMAND, 0x30, 0xA3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-     bytesRead = TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
+     bytesRead = (int)TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
      if (bytesRead > 0) {
          printf("Switched to SWD\n");
      }
@@ -616,7 +574,7 @@ void EnterSWD()
      }
 }
 
-void StepCore()
+void stlink_t::StepCore()
 {
      size_t txSize = 16;
      unsigned char rxBuffer[100];
@@ -626,14 +584,14 @@ void StepCore()
      TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
 }
 
-void RunCore()
+void stlink_t::RunCore()
 {
      size_t txSize = 16;
      unsigned char rxBuffer[100];
      size_t rxSize = 64;
      unsigned char txBuffer[] = {DEBUG_COMMAND, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-     int bytesRead = TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
+     int bytesRead = (int)TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
      if (bytesRead > 0) {
          printf("Running\n");
      }
@@ -642,7 +600,7 @@ void RunCore()
      }
 }
 
-int FetchTraceByteCount()
+int stlink_t::FetchTraceByteCount()
 {
     size_t txSize = 16;
     unsigned char rxBuffer[100];
@@ -651,7 +609,7 @@ int FetchTraceByteCount()
     unsigned char txBuffer[] = {DEBUG_COMMAND, 0x42, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     int traceByteCount = 0;
 
-    bytesRead = TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
+    bytesRead = (int)TransferData(1, (unsigned char*) &txBuffer, txSize, (unsigned char*) &rxBuffer, rxSize);
     if (bytesRead > 0) {
     	traceByteCount = rxBuffer[0]+(rxBuffer[1] << 8);  // original one - did not handle large packets
     }
@@ -666,7 +624,7 @@ int FetchTraceByteCount()
 // for trace
 uint8_t trace_offset = 1;
 
-int ReadTraceData(int toscreen, int rxSize)
+int stlink_t::ReadTraceData(int toscreen, int rxSize, char* out)
 {
 	if (debugEnabled) printf("Reading %d bytes\n", (int)rxSize);
 
@@ -697,13 +655,13 @@ int ReadTraceData(int toscreen, int rxSize)
     while (totalBytes > 0) {
 
 		ret = libusb_bulk_transfer(
-					 stlinkhandle,
+                    stlinkhandle,
 					 3 | LIBUSB_ENDPOINT_IN,
 					 rxBuffer,
 					 totalBytes,
 					 &bytesRead,
 					 0);
-		printf("Read response %d of %d bytes. ret = %d\n", bytesRead, rxSize, ret);
+        if (debugEnabled) printf("Read response %d of %d bytes. ret = %d\n", bytesRead, rxSize, ret);
 		if (bytesRead != rxSize) {
 			printf("\n\n>>>>>>>>>>>>>>>>> Not read all trace data. <<<<<<<<<<<<<<<<<<<<\n\n");
 		}
@@ -734,12 +692,13 @@ int ReadTraceData(int toscreen, int rxSize)
 				if (toscreen) printf("  %s\n\n", line);
 			}
 	#endif
+            // -- To File
 			pos = 0;
-			while (pos < bytesRead) {
+            if (fullResultsFile != NULL) while (pos < bytesRead) {
 				// assume 1 byte trace for now - only because this is what we are testing with!
 				//packetSize = rxBuffer[pos];	// 1, 2 or 4 bytes
 				ch = rxBuffer[pos];
-				if (fullResultsFile != NULL) fprintf(fullResultsFile, "%c",ch);
+				fprintf(fullResultsFile, "%c",ch);
 				pos += 2;
 			}
 
@@ -748,16 +707,20 @@ int ReadTraceData(int toscreen, int rxSize)
 			if (rxBuffer[0] == 0x01) {
 				trace_offset = 1;
 			}
-			while (pos < bytesRead-trace_offset) {
+            // -- To console
+            while (pos < bytesRead - trace_offset) {
 				// assume 1 byte trace for now - only because this is what we are testing with!
 				//packetSize = rxBuffer[pos];	// 1, 2 or 4 bytes
 				ch = rxBuffer[pos+trace_offset];
 				if (toscreen) {
 					printf("%c",((ch < 31) | (ch > 127)) ? '.' : ch);
 				}
-				if (resultsFile != NULL) fprintf(resultsFile, "%c",ch);
-				pos += 2;
+                if (resultsFile != NULL) fprintf(resultsFile, "%c",ch);
+                if(out) out[pos / 2] = rxBuffer[pos + trace_offset];
+				
+                pos += 2;
 			}
+            // -- To out
 
 			//trace_offset = ((bytesRead+trace_offset) & 0x01);
 			if (resultsFile != NULL) fflush(resultsFile);
@@ -768,10 +731,10 @@ int ReadTraceData(int toscreen, int rxSize)
 		}
     }
 
-   	return bytesRead;
+   	return (bytesRead - trace_offset) / 2;
 }
 
-ssize_t TransferData(int terminate,
+ssize_t stlink_t::TransferData(int terminate,
          unsigned char* transmitBuffer, size_t transmitLength,
          unsigned char* receiveBuffer, size_t receiveLength)
 {
@@ -813,13 +776,13 @@ ssize_t TransferData(int terminate,
      int bytesTransferred = 0;
      int ret = 0;
 
-     ret = libusb_bulk_transfer(
+     ret = (int)libusb_bulk_transfer(
                   stlinkhandle,
                   2 | LIBUSB_ENDPOINT_OUT,
                   transmitBuffer,
-                  transmitLength,
+                  (int)transmitLength,
                   &bytesTransferred,
-                  0);
+                  3000);
 
      if (debugEnabled) printf("TransferData - request, %d of %d bytes written, ret = %d\n", bytesTransferred, (int)transmitLength, ret);
      if (bytesTransferred != transmitLength) {
@@ -828,11 +791,11 @@ ssize_t TransferData(int terminate,
 
      // response required?
      if (receiveBuffer != NULL) {
-  		 ret = libusb_bulk_transfer(
+  		 ret = (int)libusb_bulk_transfer(
 				 stlinkhandle,
 				 1 | LIBUSB_ENDPOINT_IN,
 				 receiveBuffer,
-				 receiveLength,
+                 (int)receiveLength,
                  &bytesTransferred,
 				 0);
 
@@ -917,8 +880,8 @@ int submit_wait(struct libusb_transfer* trans)
 #include <windows.h>
 #include <assert.h>
 
-void usleep(unsigned int usec) {
-    HANDLE timer;
+void stlink_t::usleep(unsigned int usec) {
+    HANDLE timer = nullptr;
     LARGE_INTEGER ft;
 
     ft.QuadPart = -(10 * (__int64)usec);

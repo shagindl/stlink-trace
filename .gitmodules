@@ -1,0 +1,3 @@
+[submodule "Third Party/fwm-common"]
+	path = Third Party/fwm-common
+	url = https://bitbucket.org/sigma-mp/fwm-common.git

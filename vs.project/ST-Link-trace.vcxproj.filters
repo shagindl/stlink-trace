@@ -18,18 +18,19 @@
     <ClCompile Include="..\stlink-trace.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="..\ST-Link.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\stlink-trace.h">
       <Filter>Исходные файлы</Filter>
     </ClInclude>
+    <ClInclude Include="..\ST-Link.h">
+      <Filter>Исходные файлы</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <CopyFileToFolders Include="packages\libusb.1.0.21\lib\native\x86\libusb-1.0.dll">
-      <Filter>Файлы ресурсов</Filter>
-    </CopyFileToFolders>
   </ItemGroup>
 </Project>
