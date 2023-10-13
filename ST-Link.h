@@ -14,8 +14,6 @@ private:
 	libusb_device* stlinkdev = nullptr;
 
 	ssize_t listSize = 0;
-	struct libusb_transfer* responseTransfer = 0;
-	struct libusb_transfer* requestTransfer = 0;
 
 	stlink_t stlinkl{ libusb_hndl };
 

@@ -62,12 +62,16 @@ struct libusb_hndl_t {
     libusb_context* ctx = nullptr;
     libusb_device_handle* stlinkhandle = nullptr;
     libusb_device** deviceList = nullptr;
+    struct libusb_transfer* responseTransfer = nullptr;
+    struct libusb_transfer* requestTransfer = nullptr;
 };
 
 class DLL_EXPORT stlink_t {
     libusb_context* &ctx;
     libusb_device_handle* &stlinkhandle;
     libusb_device** &deviceList;
+    struct libusb_transfer* &responseTransfer;
+    struct libusb_transfer* &requestTransfer;
 
     int debugEnabled = 0;
 
@@ -75,7 +79,9 @@ class DLL_EXPORT stlink_t {
     FILE* fullResultsFile = NULL;
     Logger *logger = nullptr;
 public:
-    stlink_t(libusb_hndl_t& hndl) : ctx(hndl.ctx), stlinkhandle(hndl.stlinkhandle), deviceList(hndl.deviceList){
+    stlink_t(libusb_hndl_t& hndl) : 
+        ctx(hndl.ctx), stlinkhandle(hndl.stlinkhandle), deviceList(hndl.deviceList),
+        responseTransfer(hndl.responseTransfer), requestTransfer(hndl.requestTransfer) {
 
     }
     void Init(Logger* pLogger) {
@@ -109,6 +115,7 @@ private:
     ssize_t TransferData(int terminate,
         unsigned char* transmitBuffer, size_t transmitLength,
         unsigned char* receiveBuffer, size_t receiveLength);
+    int submit_wait(struct libusb_transfer* trans);
 };
 
 #endif /* STLINK_TRACE_H_ */

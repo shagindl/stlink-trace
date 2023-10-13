@@ -8,6 +8,8 @@ bool STLink_SWO_Sniffer::Open() {
     auto& ctx = libusb_hndl.ctx;
     auto& stlinkhandle = libusb_hndl.stlinkhandle;
     auto& deviceList = libusb_hndl.deviceList;
+    auto& requestTransfer = libusb_hndl.requestTransfer;
+    auto& responseTransfer = libusb_hndl.responseTransfer;
 
     // initialise the USB session context
     ret = libusb_init(&ctx);
@@ -111,17 +113,26 @@ bool STLink_SWO_Sniffer::Open() {
     return true;
 }
 int STLink_SWO_Sniffer::Recv(char* buff, int szBuff){
-    int byteCount = 0, bytesRead = 0;
+    int byteCount = 0, bytesRead = 0, cnt_tries = 5, cnt_tries_update = 2;
+    int indx_buff = 0;
 
-    while (byteCount == 0) {
-        stlinkl.usleep(100);
+    //printf("Bgn Recv.  ");
+    while (cnt_tries > 0) {
+        stlinkl.usleep(1000), cnt_tries--;
 
+        //byteCount = 256;
         byteCount = stlinkl.FetchTraceByteCount();
+        //printf("cnt_tries{ %d }; byteCount{ %d }", cnt_tries, byteCount);
 
         if (byteCount == 0) continue;
-        if (byteCount > szBuff) {
-            byteCount = szBuff;
-            printf("Detected byteCount{%d} > szBuff{%d}./n", byteCount, szBuff);
+        else {
+            cnt_tries += cnt_tries_update;
+            if (cnt_tries_update > 0) cnt_tries_update--;
+        }
+
+        if (byteCount > szBuff - indx_buff) {
+            byteCount = szBuff - indx_buff;
+            printf("Detected byteCount{%d} > szBuff{%d}./n", byteCount, szBuff - indx_buff);
         }
 
         if (byteCount > 2048) {
@@ -136,12 +147,11 @@ int STLink_SWO_Sniffer::Recv(char* buff, int szBuff){
                 //RunCore();	// run it - stalled?
                 //continue;
             }
-            int cnt = 0;
             while (byteCount > 0) {
-                toread = byteCount > min(2048, szBuff) ? min(2048, szBuff) : byteCount;
-                bytesRead += stlinkl.ReadTraceData(0, toread, &buff[cnt]);
+                toread = byteCount > min(2048, szBuff - indx_buff) ? min(2048, szBuff - indx_buff) : byteCount;
+                bytesRead += stlinkl.ReadTraceData(0, toread, &buff[indx_buff]);
                 byteCount -= toread;
-                toread += toread;
+                indx_buff += toread;
 
                 // check the register values
                 //unsigned int value =
@@ -155,10 +165,12 @@ int STLink_SWO_Sniffer::Recv(char* buff, int szBuff){
             continue;
         }
 
-        bytesRead = stlinkl.ReadTraceData(0, byteCount, buff);
+        bytesRead = stlinkl.ReadTraceData(0, byteCount, &buff[indx_buff]);
+        indx_buff += bytesRead;
     }
-
-    return bytesRead;
+    //printf("End Recv.\r\n");
+    
+    return indx_buff;
 }
 void STLink_SWO_Sniffer::Clean() {
     auto ret = libusb_release_interface(libusb_hndl.stlinkhandle, 0);

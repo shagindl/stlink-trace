@@ -150,7 +150,8 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(SolutionDir)packages\libusb.1.0.21\lib\native\$(Platform)\*.dll" "$(OutDir)"</Command>
+      <Command>copy /y "$(SolutionDir)packages\libusb.1.0.21\lib\native\$(Platform)\*.dll" "$(OutDir)"
+$(SolutionDir)UpdateRelease.STLink.bat</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

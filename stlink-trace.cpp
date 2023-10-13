@@ -643,12 +643,12 @@ int stlink_t::ReadTraceData(int toscreen, int rxSize, char* out)
             0);
 
     // no data?
-    if (submit_wait(responseTransfer)) return;
+    if (submit_wait(responseTransfer)) return 0;
 
     // have trace data - display it
     bytesRead = responseTransfer->actual_length;
-    printf("Read response of %d bytes\n", bytesRead);
-#else
+    if(toscreen) printf("Read response of %d bytes\n", bytesRead);
+#else /* !ASYNC */
     int ret = 0;
     int totalBytes = rxSize;
 
@@ -667,13 +667,13 @@ int stlink_t::ReadTraceData(int toscreen, int rxSize, char* out)
 		}
 		totalBytes -= bytesRead;
 
-	#endif
+#endif /* ASYNC */
 		if (bytesRead > 0) {
 			//TODO: re-factor my following junk code :)
 			int pos = 0;
 			unsigned char ch = ' ';
 
-	#if HEXDUMP
+	        #if HEXDUMP
 			printf("Trace bytes read: %d\n", bytesRead);
 			int width=16; //8;
 			unsigned char line[9] = "\0";
@@ -691,7 +691,7 @@ int stlink_t::ReadTraceData(int toscreen, int rxSize, char* out)
 				for (p=0; p<width-(pos%width); p++) printf("   ");	//padding
 				if (toscreen) printf("  %s\n\n", line);
 			}
-	#endif
+	        #endif /* HEXDUMP */
             // -- To File
 			pos = 0;
             if (fullResultsFile != NULL) while (pos < bytesRead) {
@@ -729,7 +729,9 @@ int stlink_t::ReadTraceData(int toscreen, int rxSize, char* out)
 		else {
 			printf("Unable to read trace data\n");
 		}
+#if !ASYNC
     }
+#endif ASYNC
 
    	return (bytesRead - trace_offset) / 2;
 }
@@ -746,7 +748,7 @@ ssize_t stlink_t::TransferData(int terminate,
              stlinkhandle,
              2 | LIBUSB_ENDPOINT_OUT,
              transmitBuffer,
-             transmitLength,
+             (int)transmitLength,
              NULL,
              NULL,
              0);
@@ -762,7 +764,7 @@ ssize_t stlink_t::TransferData(int terminate,
 				 stlinkhandle,
 				 1 | LIBUSB_ENDPOINT_IN,
 				 receiveBuffer,
-				 receiveLength,
+				 (int)receiveLength,
 				 NULL,
 				 NULL,
 				 0);
@@ -819,7 +821,7 @@ struct trans_ctx {
 };
 
 static void LIBUSB_CALL on_trans_done(struct libusb_transfer * trans) {
-     struct trans_ctx * const ctx = trans->user_data;
+     struct trans_ctx * const ctx = (struct trans_ctx*)trans->user_data;
 
      if (trans->status != LIBUSB_TRANSFER_COMPLETED) {
     	 if (trans->status != LIBUSB_TRANSFER_STALL) {
@@ -829,8 +831,24 @@ static void LIBUSB_CALL on_trans_done(struct libusb_transfer * trans) {
 
      ctx->flags |= TRANS_FLAGS_IS_DONE;
 }
+#include <chrono>
 
-int submit_wait(struct libusb_transfer* trans)
+int gettimeofday(struct timeval* tp, struct timezone* tzp) {
+    namespace sc = std::chrono;
+
+    sc::system_clock::duration d = sc::system_clock::now().time_since_epoch();
+    sc::seconds s = sc::duration_cast<sc::seconds>(d);
+    tp->tv_sec = (long)s.count();
+    tp->tv_usec = (long)sc::duration_cast<sc::microseconds>(d - s).count();
+
+    return 0;
+}
+void timersub(timeval* stop, timeval* start, timeval* diff) {
+    diff->tv_sec = (long)((stop->tv_sec * 1000000.0 + stop->tv_usec) - (start->tv_sec * 1000000.0 + start->tv_usec));
+    diff->tv_usec = diff->tv_sec % 1000000;
+    diff->tv_sec /= 1000000;
+}
+int stlink_t::submit_wait(struct libusb_transfer* trans)
 {
      struct timeval start;
      struct timeval now;
@@ -844,7 +862,7 @@ int submit_wait(struct libusb_transfer* trans)
      trans->callback = on_trans_done;
      trans->user_data = &trans_ctx;
 
-     if ((error = libusb_submit_transfer(trans))) {
+     if ((error = (libusb_error)libusb_submit_transfer(trans))) {
          printf("libusb_submit_transfer(%d)\n", error);
         	 return -1;
      }
