@@ -663,7 +663,8 @@ int stlink_t::ReadTraceData(int toscreen, int rxSize, char* out)
 					 0);
         if (debugEnabled) printf("Read response %d of %d bytes. ret = %d\n", bytesRead, rxSize, ret);
 		if (bytesRead != rxSize) {
-			printf("\n\n>>>>>>>>>>>>>>>>> Not read all trace data. <<<<<<<<<<<<<<<<<<<<\n\n");
+			printf("\n\n>>>>>>>>>>>>>>>>> Not read all trace data. bytesRead = %d. <<<<<<<<<<<<<<<<<<<<\n\n", bytesRead);
+            bytesRead = rxSize;
 		}
 		totalBytes -= bytesRead;
 
@@ -788,26 +789,30 @@ ssize_t stlink_t::TransferData(int terminate,
 
      if (debugEnabled) printf("TransferData - request, %d of %d bytes written, ret = %d\n", bytesTransferred, (int)transmitLength, ret);
      if (bytesTransferred != transmitLength) {
-         printf("\n\n>>>>>>>>>>>>>>>>> Not written all data. <<<<<<<<<<<<<<<<<<<<\n\n");
-     }
+         printf("\n\n>>>>>>>>>>>>>>>>> Not written all data. bytesTransferred { %d } != transmitLength{ %d } <<<<<<<<<<<<<<<<<<<<\n\n", 
+             bytesTransferred, transmitLength);
 
-     // response required?
-     if (receiveBuffer != NULL) {
-  		 ret = (int)libusb_bulk_transfer(
-				 stlinkhandle,
-				 1 | LIBUSB_ENDPOINT_IN,
-				 receiveBuffer,
+         res = -1;
+     } else {
+
+         // response required?
+         if (receiveBuffer != NULL) {
+             ret = (int)libusb_bulk_transfer(
+                 stlinkhandle,
+                 1 | LIBUSB_ENDPOINT_IN,
+                 receiveBuffer,
                  (int)receiveLength,
                  &bytesTransferred,
-				 0);
+                 0);
 
-		 if (debugEnabled) printf("TransferData - response, ret = %d\n", ret);
-//	     if (bytesTransferred != receiveLength) {
-//	         printf("\n\n>>>>>>>>>>>>>>>>> Not read all data. <<<<<<<<<<<<<<<<<<<<\n\n");
-//	     }
+             if (debugEnabled) printf("TransferData - response, ret = %d\n", ret);
+             //	     if (bytesTransferred != receiveLength) {
+             //	         printf("\n\n>>>>>>>>>>>>>>>>> Not read all data. <<<<<<<<<<<<<<<<<<<<\n\n");
+             //	     }
 
-		 res = bytesTransferred;
-	  }
+             res = bytesTransferred;
+         }
+     }
 #endif
 
      return res;

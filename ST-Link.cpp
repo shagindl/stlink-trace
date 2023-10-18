@@ -131,11 +131,11 @@ int STLink_SWO_Sniffer::Recv(char* buff, int szBuff){
         }
 
         if (byteCount > szBuff - indx_buff) {
-            byteCount = szBuff - indx_buff;
             printf("Detected byteCount{%d} > szBuff{%d}./n", byteCount, szBuff - indx_buff);
+            byteCount = szBuff - indx_buff;
         }
 
-        if (byteCount > 2048) {
+        if (byteCount >= 2048) {
             int toread = 0;
             printf("**** more than 2048 bytes in trace data!! : 0x%4x ****\n", byteCount);
 
@@ -167,6 +167,8 @@ int STLink_SWO_Sniffer::Recv(char* buff, int szBuff){
 
         bytesRead = stlinkl.ReadTraceData(0, byteCount, &buff[indx_buff]);
         indx_buff += bytesRead;
+        /*printf("bytesRead = %d, byteCount = %d, indx_buff = %d. cnt_tries = %d.\r\n",
+                bytesRead, byteCount, indx_buff, cnt_tries);*/
     }
     //printf("End Recv.\r\n");
     
